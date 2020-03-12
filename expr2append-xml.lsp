@@ -1,0 +1,25 @@
+;; translate s-expr to XML optimized for AIML and append to export-file (path+file)
+;;
+(define (expr2append-xml expr (level 1) (indentation 4))
+ (setq indentation (dup " " indentation))
+ (cond 
+   ((or (atom? expr) (quote? expr))
+       (append-file export-file (dup indentation level))
+       (if last-expr-was-pattern
+        (and (append-file export-file (string expr indentation)) (setq last-expr-was-pattern nil))
+        (append-file export-file (string expr "\n"))))
+   ((list? (first expr))
+       (expr2append-xml (first expr) (+ level 1))
+       (dolist (s (rest expr)) (expr2append-xml s (+ level 1))))
+   ((symbol? (first expr))
+       (append-file export-file (dup indentation level))
+       (if (= (first expr) 'pattern)
+        (and (append-file export-file (string "<" (first expr) ">")) (setq last-expr-was-pattern true))	
+        (append-file export-file (string "<" (first expr) ">" "\n")))
+       (dolist (s (rest expr)) (expr2append-xml s (+ level 1)))
+       (append-file export-file (dup indentation level))
+     (append-file export-file (string "</" (first expr) ">" "\n")))
+   (true
+      (append-file export-file (dup indentation level) 
+      (append-file export-file (string "<error>" (string expr) "<error>" "\n"))))
+ ))
