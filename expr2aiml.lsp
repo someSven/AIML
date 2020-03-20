@@ -1,5 +1,5 @@
-(setq responses '())
-(load (append ((exec "echo $HOME")0) "/AIML/responses.lsp"))
+(setq categories '())
+(load (append ((exec "echo $HOME")0) "/AIML/categories.lsp"))
 (setq save-path (append ((exec "echo $HOME")0) "/AIML/"))
 (setq export-filename "exported")
 (setq export-file (append ((exec "echo $HOME")0) "/AIML/" export-filename ".aiml"))
@@ -11,7 +11,7 @@
 
 ;;backup
 (setq last-backup (- (date-value) (integer (first(parse (first(sort (exec (append "ls " save-path "/backups"))>))".")))))
-(if (> last-backup 1000) (save (append save-path "backups/" (string(date-value)) ".lsp") 'responses))
+(if (> last-backup 1000) (save (append save-path "backups/" (string(date-value)) ".lsp") 'categories))
 ; add only save if new, deleted old files?
 
 ;; translate s-expr to AIML XML
@@ -43,15 +43,15 @@
       (println "<error>" (string expr) "<error>")))
  ))
 
-;; functions to create new aiml responses, update or alter them
+;; functions to create new aiml categories, update or alter them
 ;;
 (define (help)
 	(println "--------------------(help) for this overview------------------------------------") 
-	(println "commands : [newrp] [update-rp] [save-data] [rp2xml] [expr2xml] [list2xml]")
+	(println "commands : [newcat] [update-cat] [save-data] [cat2xml] [expr2xml] [list2xml]")
 	(println "commands : [set-topic] [random-list] [help] [reload] [export] [save-exit]")
 	(println "--------------------------------------------------------------------------------")
-	(println "debugging: [response-exists?] [response2that-exists?] [response-replace]")
-	(println "debugging: [debuging only!: set-newrp]") 
+	(println "debugging: [category-exists?] [category2that-exists?] [category-replace]")
+	(println "debugging: [debuging only!: set-newcat]") 
 	(println "save-path: " save-path "\t" "export-file: " export-file)
 	(println "--------------------------------------------------------------------------------") true)
 
@@ -65,24 +65,24 @@
 			(push (string (dup indentation 3) "</random>") output -1) output)
 		(throw-error "Input in list2xml wasn't a list...")))
 
-(define (set-newrp pattern-input template-input)
+(define (set-newcat pattern-input template-input)
 	(setq pattern-input (upper-case pattern-input))
 	(if (string? template-input)
-		(push (list 'category (cons 'pattern pattern-input) (cons 'template template-input)) responses -1)
-		(push (list 'category (cons 'pattern pattern-input) (cons 'template (list template-input))) responses -1))
-	(last responses))
+		(push (list 'category (cons 'pattern pattern-input) (cons 'template template-input)) categories -1)
+		(push (list 'category (cons 'pattern pattern-input) (cons 'template (list template-input))) categories -1))
+	(last categories))
 
-(define (update-rp pattern-input template-input)
+(define (update-cat pattern-input template-input)
 	(setq pattern-input (upper-case pattern-input))
 	(setq counter -1) 
-	(dolist (entry responses) 
+	(dolist (entry categories) 
 		(inc counter) (if (= (lookup 'pattern entry) pattern-input) 
-		(setf (assoc 'template (responses counter)) (cons 'template template-input)) ))
-	(last responses))
+		(setf (assoc 'template (categories counter)) (cons 'template template-input)) ))
+	(last categories))
 
-(define (save-data) (save (append save-path "responses.lsp") 'responses))
+(define (save-data) (save (append save-path "categories.lsp") 'categories))
 
-(define (response-replace element) 
+(define (category-replace element) 
 	(setq template (lookup 'template element))
 	(setq entry (parse(first(parse (first(parse template " "))":"))"="))
 	(setq leftover (join(rest(parse template ":"))":"))
@@ -102,7 +102,7 @@
 	(write-file export-file export-file-header)
 	; (if (and topic (!= topic "") (!= "*"))  ) unnecessary?
 	(append-file export-file "\n\n")
-	(dolist (element responses)
+	(dolist (element categories)
 		(replace "srai:" element {<srai>})
 		(replace ":srai" element {</srai>})
 		(replace "-sr/-" element {<sr/>})
@@ -111,7 +111,7 @@
 		(replace "-star/-" element {<star/>})
 		;(replace "that::" element {<that>}) ; before template
 		;(replace "::that" element {</that>})
-		(if (find "::" element) (response-replace element))
+		(if (find "::" element) (category-replace element))
 		(if (list? ((element 2)1))
 			(and	(setf	(assoc 'template element) 
 					(push (string (list2xml ((element 2) 1))) '(template) -1))))
@@ -119,29 +119,31 @@
 		(append-file export-file "\n"))
 	(append-file export-file {</aiml>}))
 
-(define (response-exists? pattern-input)
+(define (category-exists? pattern-input)
 	(setq pattern-input (upper-case pattern-input)) 
-	(if (dolist (entry responses) (= (lookup 'pattern entry) pattern-input))))
+	(if (dolist (entry categories) (= (lookup 'pattern entry) pattern-input))))
 
-(define (newrp pattern-input template-input)
+(define (newcat pattern-input template-input)
 	(setq pattern-input (upper-case pattern-input))
 	(if (catch (ends-with template-input "=")) 
 		(throw-error "If you use \" in your input use \{\} on the outside.")) 
-	(if (catch(response-exists? pattern-input)) 
-		(throw-error "Pattern already exists!") 
-		(set-newrp pattern-input template-input) )) 
+	(if (catch (category-exists? pattern-input)) 
+		(throw-error "Pattern already exists! Use update-cat to change it.") 
+		(set-newcat pattern-input template-input) )) 
 
-(define (newrp2t pattern-input that-input template-input)
+(define (newthat pattern-input that-input template-input)
         (setq pattern-input (upper-case pattern-input))
-	(println "ARGS? WTF? " (args))
-        (if (catch (ends-with template-input "="))
+        (if (catch (or(ends-with template-input "=") (ends-with that-input "=")))
                 (throw-error "If you use \" in your input use \{\} on the outside."))
-        (if (catch(response2that-exists? pattern-input))
-                (throw-error "Pattern already exists!")
-                (set-newrp pattern-input that-input template-input) ))
+        (if (catch (and (category-exists? pattern-input) (that-exists?)))
+                (throw-error "Pattern already exists! Use update-that to change it.")
+                (set-newthat pattern-input that-input template-input) ))
 
+(define (that-exists?))
+(define (update-that))
+(define (set-newthat))
 
-(define (rp2xml pattern-input template-input)
+(define (cat2xml pattern-input template-input)
 	(setq pattern-input (upper-case pattern-input)) 
 	(expr2xml (list 'category (cons 'pattern pattern-input) (cons 'template template-input)))) 
 
@@ -156,12 +158,12 @@
 
 (help)
 ;; ToDo List
-;; Hinzufügen, Reset Responses, Kategorien zusammenfassen, Random erledig? 
+;; Hinzufügen, Reset categories, Kategorien zusammenfassen, Random erledig? 
 ;; check ob output korrektes xml ist 
 ;; that fehlt, muss bevor template
 ;; export needs topic
-;; different responses list per topic
-;; Sonderzeichen aussortieren
+;; different categories list per topic
+;; Sonderzeichen in pattern aussortieren
 
 
 
