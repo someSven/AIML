@@ -51,8 +51,9 @@
 	(println "commands : [set-topic] [random-list] [help] [reload] [export] [save-exit]")
 	(println "--------------------------------------------------------------------------------")
 	(println "debugging: [category-exists?] [category2that-exists?] [category-replace]")
-	(println "debugging: [debuging only!: set-newcat]") 
-	(println "save-path: " save-path "\t" "export-file: " export-file)
+	(println "debugging: [no-special-chars?]")
+	(println "debugging: [debuging only!: set-newcat, set-newthat]") 
+	(println "path+file: " save-path "\t" "export-file: " export-file)
 	(println "--------------------------------------------------------------------------------") true)
 
 (define (reload) (! "clear") (load "expr2aiml.lsp") true)
@@ -152,20 +153,19 @@
 			(= (lookup 'that entry) that-input)) ))
 
 (define (update-that pattern-input that-input template-input)
-
         (setq pattern-input (upper-case pattern-input))
         (setq counter -1)
         (dolist (entry categories)
                 (inc counter) (if (= (lookup 'pattern entry) pattern-input)
-                (setf (assoc 'template (categories counter)) (cons 'template template-input)) ))
+                (setf (assoc 'that (categories counter)) (cons 'that that-input))
+		(setf (assoc 'template (categories counter)) (cons 'template template-input))) 
         (last categories))
 
 (define (set-newthat pattern-input that-input template-input)
-
         (setq pattern-input (upper-case pattern-input))
-        (if (string? template-input)
-                (push (list 'category (cons 'pattern pattern-input) (cons 'template template-input)) categories -1)
-                (push (list 'category (cons 'pattern pattern-input) (cons 'template (list template-input))) categories -1))
+        (if (and (string? that-input) (string? template-input)) 
+                (push (list 'category (cons 'pattern pattern-input) (cons 'that that-input) (cons 'template template-input)) categories -1)
+                (push (list 'category (cons 'pattern pattern-input) (cons 'that that-input) (cons 'template (list template-input))) categories -1))
         (last categories))
 
 
@@ -186,14 +186,16 @@
 
 ;; ToDo List
 
-;; Hinzufügen, Reset categories, Kategorien zusammenfassen 
-;; that fehlt, muss bevor template
+;; Add something, eg. to a random list
+;; reset/delete categories
+;; join categories? eg. make a random list out of the responses  
 ;; export needs topic
 ;; different categories list per topic
-;; Sonderzeichen in pattern aussortieren
+;; fork whole topics based on mood, sentiment or context
+;; live update of new files while running
 
-;; weniger wichtig
-; check ob output korrektes xml ist? Mit tidy? 
+;; less important
+; check if output is correct xml? With tidy? Other linter? 
 
 
 
