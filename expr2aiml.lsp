@@ -65,8 +65,13 @@
 			(push (string (dup indentation 3) "</random>") output -1) output)
 		(throw-error "Input in list2xml wasn't a list...")))
 
+(define (no-special-chars? input) 
+	(= '() (clean true? (map (fn (x) (find (get-char(upper-case x)) chars)) (explode input)))))
+
 (define (set-newcat pattern-input template-input)
-	(setq pattern-input (upper-case pattern-input))
+	(if (catch (no-special-chars? pattern-input))
+		(throw-error "special chars in the pattern causes errors")
+		(setq pattern-input (upper-case pattern-input)))
 	(if (string? template-input)
 		(push (list 'category (cons 'pattern pattern-input) (cons 'template template-input)) categories -1)
 		(push (list 'category (cons 'pattern pattern-input) (cons 'template (list template-input))) categories -1))
@@ -109,8 +114,6 @@
                 (replace "sr::" element {<srai>})
                 (replace "::sr" element {</srai>})
 		(replace "-star/-" element {<star/>})
-		;(replace "that::" element {<that>}) ; before template
-		;(replace "::that" element {</that>})
 		(if (find "::" element) (category-replace element))
 		(if (list? ((element 2)1))
 			(and	(setf	(assoc 'template element) 
@@ -124,7 +127,9 @@
 	(if (dolist (entry categories) (= (lookup 'pattern entry) pattern-input))))
 
 (define (newcat pattern-input template-input)
-	(setq pattern-input (upper-case pattern-input))
+        (if (catch (no-special-chars? pattern-input)) 
+                (throw-error "special chars in the pattern causes errors")
+		(setq pattern-input (upper-case pattern-input)))
 	(if (catch (ends-with template-input "=")) 
 		(throw-error "If you use \" in your input use \{\} on the outside.")) 
 	(if (catch (category-exists? pattern-input)) 
@@ -139,9 +144,30 @@
                 (throw-error "Pattern already exists! Use update-that to change it.")
                 (set-newthat pattern-input that-input template-input) ))
 
-(define (that-exists?))
-(define (update-that))
-(define (set-newthat))
+(define (that-exists? pattern-input that-input)
+        (setq pattern-input (upper-case pattern-input))
+	(setq that-input (upper-case that-input))
+        (if (dolist (entry categories) 
+		(and	(= (lookup 'pattern entry) pattern-input))
+			(= (lookup 'that entry) that-input)) ))
+
+(define (update-that pattern-input that-input template-input)
+
+        (setq pattern-input (upper-case pattern-input))
+        (setq counter -1)
+        (dolist (entry categories)
+                (inc counter) (if (= (lookup 'pattern entry) pattern-input)
+                (setf (assoc 'template (categories counter)) (cons 'template template-input)) ))
+        (last categories))
+
+(define (set-newthat pattern-input that-input template-input)
+
+        (setq pattern-input (upper-case pattern-input))
+        (if (string? template-input)
+                (push (list 'category (cons 'pattern pattern-input) (cons 'template template-input)) categories -1)
+                (push (list 'category (cons 'pattern pattern-input) (cons 'template (list template-input))) categories -1))
+        (last categories))
+
 
 (define (cat2xml pattern-input template-input)
 	(setq pattern-input (upper-case pattern-input)) 
@@ -157,14 +183,17 @@
 (define (save-exit) (save save-data) (println "data saved, exit...") (exit))
 
 (help)
+
 ;; ToDo List
-;; Hinzufügen, Reset categories, Kategorien zusammenfassen, Random erledig? 
-;; check ob output korrektes xml ist 
+
+;; Hinzufügen, Reset categories, Kategorien zusammenfassen 
 ;; that fehlt, muss bevor template
 ;; export needs topic
 ;; different categories list per topic
 ;; Sonderzeichen in pattern aussortieren
 
+;; weniger wichtig
+; check ob output korrektes xml ist? Mit tidy? 
 
 
 
