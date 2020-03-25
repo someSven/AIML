@@ -1,8 +1,18 @@
+!# /user/bin/env newlisp
+
+; startup variables are: topic, savefile-name, path, data-dir exportfile-name, export-file, export-file-header, indentation, last-backup, namepattern
+; *-name is the file with the descriptor, *-file is the filename with the path
+; standard topic is "none"
+
 (setq categories '())
-(load (append ((exec "echo $HOME")0) "/AIML/categories.lsp"))
-(setq save-path (append ((exec "echo $HOME")0) "/AIML/"))
-(setq export-filename "exported")
-(setq export-file (append ((exec "echo $HOME")0) "/AIML/" export-filename ".aiml"))
+(setq topic "none")
+(setq data-dir "/AIML/")
+(setq savefile-name (string "categories" ".lsp")) ;standard, set-topic will change this
+(setq path (append ((exec "echo $HOME")0) data-dir))
+(load (append path savefile-name)) ;loads standard categories, set-topic will load others
+(setq namepattern "exported")
+(setq exportfile-name (string "exported" ".aiml")) ;set-topic will change that
+(setq export-file (append path exportfile-name))
 (setq export-file-header {<aiml version="1.0.1" encoding="UTF-8">
 <!-- exported.aiml -->})
 (load "expr2append-xml.lsp")
@@ -10,8 +20,8 @@
 (setq indentation (dup " " indentation))
 
 ;;backup
-(setq last-backup (- (date-value) (integer (first(parse (first(sort (exec (append "ls " save-path "/backups"))>))".")))))
-(if (> last-backup 1000) (save (append save-path "backups/" (string(date-value)) ".lsp") 'categories))
+(setq last-backup (- (date-value) (integer (first(parse (first(sort (exec (append "ls " path "/backups"))>))".")))))
+(if (> last-backup 1000) (save (append path "backups/" (string(date-value)) ".lsp") 'categories))
 ; add only save if new, deleted old files?
 
 ;; translate s-expr to AIML XML
@@ -48,12 +58,13 @@
 (define (help)
 	(println "--------------------(help) for this overview------------------------------------") 
 	(println "commands : [newcat] [update-cat] [save-data] [cat2xml] [expr2xml] [list2xml]")
+	(println "commands : [that4question] []")
 	(println "commands : [set-topic] [random-list] [help] [reload] [export] [save-exit]")
 	(println "--------------------------------------------------------------------------------")
 	(println "debugging: [category-exists?] [category2that-exists?] [category-replace]")
 	(println "debugging: [no-special-chars?]")
 	(println "debugging: [debuging only!: set-newcat, set-newthat]") 
-	(println "path+file: " save-path "\t" "export-file: " export-file)
+	(println "path+file: " path "\t" "export-file: " export-file)
 	(println "--------------------------------------------------------------------------------") true)
 
 (define (reload) (! "clear") (load "expr2aiml.lsp") true)
@@ -86,7 +97,7 @@
 		(setf (assoc 'template (categories counter)) (cons 'template template-input)) ))
 	(last categories))
 
-(define (save-data) (save (append save-path "categories.lsp") 'categories))
+(define (save-data) (save (append path savefile-name) 'categories))
 
 (define (category-replace element) 
 	(setq template (lookup 'template element))
@@ -104,7 +115,7 @@
 	(setf (lookup 'template element) (string patter leftover))
 	element)
 
-(define (export) 
+(define (export option) 
 	(write-file export-file export-file-header)
 	; (if (and topic (!= topic "") (!= "*"))  ) unnecessary?
 	(append-file export-file "\n\n")
@@ -121,7 +132,8 @@
 					(push (string (list2xml ((element 2) 1))) '(template) -1))))
 		(expr2append-xml element 1) 
 		(append-file export-file "\n"))
-	(append-file export-file {</aiml>}))
+	(append-file export-file {</aiml>})
+	(if (= option "return") (! (string "cat " export-file))) true)
 
 (define (category-exists? pattern-input)
 	(setq pattern-input (upper-case pattern-input)) 
@@ -159,7 +171,7 @@
                 (inc counter) (if (= (lookup 'pattern entry) pattern-input)
                 (setf (assoc 'that (categories counter)) (cons 'that that-input))
 		(setf (assoc 'template (categories counter)) (cons 'template template-input))) 
-        (last categories))
+        (last categories)))
 
 (define (set-newthat pattern-input that-input template-input)
         (setq pattern-input (upper-case pattern-input))
@@ -168,7 +180,6 @@
                 (push (list 'category (cons 'pattern pattern-input) (cons 'that that-input) (cons 'template (list template-input))) categories -1))
         (last categories))
 
-
 (define (cat2xml pattern-input template-input)
 	(setq pattern-input (upper-case pattern-input)) 
 	(expr2xml (list 'category (cons 'pattern pattern-input) (cons 'template template-input)))) 
@@ -176,23 +187,40 @@
 (define (set-topic str)
 	(if (catch(not(string? str))) (throw-error "set-topic <input> needs to be a string!"))
 	(setq topic (upper-case str))
-	(setq export-file (append ((exec "echo $HOME")0) "/AIML/" export-filename "_" topic ".aiml"))
+	(setq export-file (append path (string(first(parse exportfile-name ".")) "_" topic ".aiml")))
 	(replace "exported" export-file-header (string "exported_" topic))
 	(println "new topic: " topic ", export-file: " export-file) true) 
+
+(define (that4question) 
+	(dolist (cat categories) 
+		(when (ends-with (lookup 'template cat) "?") 
+			(println (assoc 'pattern cat))
+			(println (lookup 'template cat)))) true)
 
 (define (save-exit) (save save-data) (println "data saved, exit...") (exit))
 
 (help)
+(println "topic is: " topic)
 
 ;; ToDo List
 
-;; Add something, eg. to a random list
-;; reset/delete categories
-;; join categories? eg. make a random list out of the responses  
-;; export needs topic
-;; different categories list per topic
-;; fork whole topics based on mood, sentiment or context
-;; live update of new files while running
+; set-topic isn't finished, nameing mess...
+; set-topic changes export path, but export doesnt work after that, export-file in expr2append-xml?
+; set-topic: different categories list per topic
+; filter special chars from <that> newthat input? 
+; Add something, eg. to a random list
+; reset/delete categories
+; join categories? eg. make a random list out of the responses  
+; fork whole topics based on mood, sentiment or context, mktemp, live-import
+; live update of new files while running
+; newthat uses only that-exists? which only checks if a pattern and that is there, not a normal cat.
+; automatic creation of 'that' for every question in the pattern, to handle the answer, that4question
+; export should have a show option to show "cat" the file after creation
+
+;;later
+; recognizing automatically when a new topic should be set for some input, eg. category-exists?
+; set-topic: export needs topic, so only that file would need to be create
+; 
 
 ;; less important
 ; check if output is correct xml? With tidy? Other linter? 
